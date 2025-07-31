@@ -1,0 +1,8 @@
+Exec AddFeature JFlash    Jflash认证命令
+vcom enable               打开虚拟串口命令
+Exec AddFeature GDB      ;添加GDB认证
+Exec AddFeature RDI      ;添加RDI 
+Exec AddFeature FlashBP  ;添加FlashBP  
+Exec AddFeature FlashDL  ;添加FlashDL 
+Exec AddFeature JFlash   ;添加JFlash 
+Exec AddFeature RDDI     ;添加RDDI
