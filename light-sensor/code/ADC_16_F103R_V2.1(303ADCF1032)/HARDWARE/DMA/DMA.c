@@ -4,6 +4,7 @@
 
 __IO uint32_t adc_timestamp = 0;
 extern __IO u16 ADC_ConvertedValue[Sample_Num][Channel_Num];        // ADC转换值数组
+volatile uint8_t dma_tx_complete = 1; // DMA发送完成标志
 
 void MYDMA_Config(void)
 {
@@ -41,6 +42,7 @@ void MYDMA_Config(void)
 	DMA_Cmd(DMA1_Channel1, ENABLE);                // 启用DMA通道
 } 
 
+
 void DMA1_Channel1_IRQHandler(void)
 {
     if (DMA_GetITStatus(DMA1_IT_TC1) != RESET)
@@ -50,5 +52,42 @@ void DMA1_Channel1_IRQHandler(void)
         
         // 清除中断标志
         DMA_ClearITPendingBit(DMA1_IT_TC1);
+    }
+}
+
+void MYDMA_USART_TX_Config(void) {
+    NVIC_InitTypeDef NVIC_InitStructure;
+    DMA_InitTypeDef DMA_InitStructure;
+
+    RCC_AHBPeriphClockCmd(RCC_AHBPeriph_DMA1, ENABLE);
+    DMA_DeInit(DMA1_Channel4); // USART1_TX用通道4
+
+    DMA_InitStructure.DMA_PeripheralBaseAddr = (uint32_t)&USART1->DR; // 串口数据寄存器地址
+    DMA_InitStructure.DMA_MemoryBaseAddr = 0; // 动态设置（发送时指定）
+    DMA_InitStructure.DMA_DIR = DMA_DIR_PeripheralDST; // 内存→外设
+    DMA_InitStructure.DMA_BufferSize = 0; // 动态设置
+    DMA_InitStructure.DMA_PeripheralInc = DMA_PeripheralInc_Disable;
+    DMA_InitStructure.DMA_MemoryInc = DMA_MemoryInc_Enable;
+    DMA_InitStructure.DMA_PeripheralDataSize = DMA_PeripheralDataSize_Byte;
+    DMA_InitStructure.DMA_MemoryDataSize = DMA_MemoryDataSize_Byte;
+    DMA_InitStructure.DMA_Mode = DMA_Mode_Normal; // 非循环模式
+    DMA_InitStructure.DMA_Priority = DMA_Priority_Medium;
+    DMA_InitStructure.DMA_M2M = DMA_M2M_Disable;
+    DMA_Init(DMA1_Channel4, &DMA_InitStructure);
+
+    // 启用传输完成中断
+    DMA_ITConfig(DMA1_Channel4, DMA_IT_TC, ENABLE);
+
+    NVIC_InitStructure.NVIC_IRQChannel = DMA1_Channel4_IRQn;
+    NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 1; // 优先级低于ADC
+    NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+    NVIC_Init(&NVIC_InitStructure);
+}
+
+void DMA1_Channel4_IRQHandler(void) {
+    if (DMA_GetITStatus(DMA1_IT_TC4)) {
+        DMA_ClearITPendingBit(DMA1_IT_TC4);
+        dma_tx_complete = 1; // 标记发送完成
+        USART_DMACmd(USART1, USART_DMAReq_Tx, DISABLE); // 关闭DMA请求
     }
 }

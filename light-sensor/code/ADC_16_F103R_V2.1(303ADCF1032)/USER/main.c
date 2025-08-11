@@ -6,7 +6,7 @@
 #include "adc.h"
 #include "DMA.h"
 extern __IO uint32_t adc_timestamp;
-
+uint8_t adc_data_buffer[128]; 
 
 void Display_Adc_Val(u16 Adc_Val)       //Дʾ12λADCֵ
 {
@@ -94,7 +94,17 @@ void Display_ADC(void)
 }
 
  
-
+void Display_ADC_DMA(void) {
+    static uint32_t last_send_time = 0;
+    uint32_t current_time = get_timestamp_ms();
+    
+    // 控制发送频率（1ms间隔）
+    if (current_time - last_send_time >= 1) {
+        int len = sprintf((char*)adc_data_buffer, "1 %lu ...", adc_timestamp); // 格式化数据
+        UART1_DMA_Send(adc_data_buffer, len); // 非阻塞发送
+        last_send_time = current_time;
+    }
+}
  
  int main(void)
  {	
@@ -112,7 +122,7 @@ void Display_ADC(void)
 		
 		 while(USART_GetFlagStatus(USART1,USART_FLAG_TXE)==RESET);//ֈսԫˤΪԉرղ֚һλ˽ߝɝӗ֪
 		 
-		Display_ADC();                                           //Дʾ12λADCֵۍ֧ѹֵ
+		Display_ADC_DMA();                                            
 		 UART1_SendString("\r\n");                               
 		 delay_ms(1);                                           
 		

@@ -153,7 +153,16 @@ void UART1_SendString(u8 *s)
 	}
 }
 
-
+void UART1_DMA_Send(uint8_t *data, uint16_t len) {
+    while (!dma_tx_complete); // ç­‰å¾…ä¸Šä¸€æ¬¡å‘é€å®Œæˆ
+    
+    DMA_Cmd(DMA1_Channel4, DISABLE);
+    DMA_SetCurrDataCounter(DMA1_Channel4, len);
+    DMA_SetMemoryBaseAddr(DMA1_Channel4, (uint32_t)data);
+    dma_tx_complete = 0;
+    DMA_Cmd(DMA1_Channel4, ENABLE);
+    USART_DMACmd(USART1, USART_DMAReq_Tx, ENABLE); // è§¦å‘DMAå‘é€
+}
 
 
 void USART1_IRQHandler(void)                	//´®¿Ú1ÖĞ¶Ï·şÎñ³ÌĞò
@@ -185,6 +194,7 @@ void USART1_IRQHandler(void)                	//´®¿Ú1ÖĞ¶Ï·şÎñ³ÌĞò
 				}
 			}   		 
      } 
+	
 #if SYSTEM_SUPPORT_OS 	//Èç¹ûSYSTEM_SUPPORT_OSÎªÕæ£¬ÔòĞèÒªÖ§³ÖOS.
 	OSIntExit();  											 
 #endif
