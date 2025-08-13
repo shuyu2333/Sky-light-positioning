@@ -1,1 +1,3 @@
 # Sky-light-positioning
+按照我的预想的话应该是实现Calculate_Direction函数就可以了？我设置的是100ms一次定时中断。
+因为板子没搞好所以最近几次的修改都完全没有调试，可能会有一堆BUG。

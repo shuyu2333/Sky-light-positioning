@@ -1,5 +1,7 @@
 #include "sys.h"
 #include "usart.h"	  
+#include "DMA.c"
+
 ////////////////////////////////////////////////////////////////////////////////// 	 
 //Èç¹ûÊ¹ÓÃucos,Ôò°üÀ¨ÏÂÃæµÄÍ·ÎÄ¼ş¼´¿É.
 #if SYSTEM_SUPPORT_OS
@@ -85,7 +87,10 @@ u8 USART_RX_BUF[USART_REC_LEN];     //½ÓÊÕ»º³å,×î´óUSART_REC_LEN¸ö×Ö½Ú.
 //bit14£¬	½ÓÊÕµ½0x0d
 //bit13~0£¬	½ÓÊÕµ½µÄÓĞĞ§×Ö½ÚÊıÄ¿
 u16 USART_RX_STA=0;       //½ÓÊÕ×´Ì¬±ê¼Ç	  
-  
+#define BUF_SIZE 128
+uint8_t adc_buf_ready[BUF_SIZE]; // å°±ç»ªæ•°æ®
+uint8_t adc_buf_active[BUF_SIZE]; // å‘é€ä¸­æ•°æ®
+volatile bool buf_lock = false;   // ç¼“å†²åŒºåˆ‡æ¢é”
 void uart_init(u32 bound){
   //GPIO¶Ë¿ÚÉèÖÃ
   GPIO_InitTypeDef GPIO_InitStructure;
@@ -164,6 +169,24 @@ void UART1_DMA_Send(uint8_t *data, uint16_t len) {
     USART_DMACmd(USART1, USART_DMAReq_Tx, ENABLE); // è§¦å‘DMAå‘é€
 }
 
+
+void UART1_DMA_Send_Trigger(void) {
+    if (!DMA_GetCmdStatus(DMA1_Channel4)) { // æ£€æŸ¥DMAæ˜¯å¦ç©ºé—²
+        memcpy(adc_buf_active, adc_buf_ready, BUF_SIZE); // åˆ‡æ¢ç¼“å†²åŒº
+        DMA_SetCurrDataCounter(DMA1_Channel4, BUF_SIZE);
+        DMA_SetMemoryBaseAddr(DMA1_Channel4, (uint32_t)adc_buf_active);
+        DMA_Cmd(DMA1_Channel4, ENABLE);
+        USART_DMACmd(USART1, USART_DMAReq_Tx, ENABLE); // å¯åŠ¨ä¼ è¾“
+    }
+}
+
+void DMA1_Channel4_IRQHandler(void) { // DMAå‘é€å®Œæˆä¸­æ–­
+    if (DMA_GetITStatus(DMA1_IT_TC4)) {
+        DMA_ClearITPendingBit(DMA1_IT_TC4);
+        USART_DMACmd(USART1, USART_DMAReq_Tx, DISABLE); // é‡Šæ”¾æ€»çº¿
+        buf_lock = false; // è§£é”ç¼“å†²åŒº
+    }
+}
 
 void USART1_IRQHandler(void)                	//´®¿Ú1ÖĞ¶Ï·şÎñ³ÌĞò
 	{

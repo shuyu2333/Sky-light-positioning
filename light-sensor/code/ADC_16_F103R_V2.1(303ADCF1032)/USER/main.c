@@ -8,7 +8,15 @@
 extern __IO uint32_t adc_timestamp;
 uint8_t adc_data_buffer[128]; 
 
-void Display_Adc_Val(u16 Adc_Val)       //Дʾ12λADCֵ
+extern __IO u16 ADC_ConvertedValue[Sample_Num][Channel_Num];
+uint16_t processed_direction = 0; // 存储处理后的朝向结果
+
+void Process_Sensor_Data(void);
+uint16_t Calculate_Direction(void);
+
+void TIM3_Config(uint16_t period_ms);
+
+void Display_Adc_Val(u16 Adc_Val)      
 {
 	u8 qian,bai,shi,ge;
 	qian=Adc_Val/1000;
@@ -105,27 +113,122 @@ void Display_ADC_DMA(void) {
         last_send_time = current_time;
     }
 }
- 
- int main(void)
- {	
+
+// 在main.c中
+void TIM2_IRQHandler(void) {  // 定时器中断服务函数
+    if (TIM_GetITStatus(TIM2, TIM_IT_Update) != RESET) {
+        TIM_ClearITPendingBit(TIM2, TIM_IT_Update);
+        Display_ADC_DMA_Handler();  // 触发数据显示
+    }
+}
+
+uint16_t Calculate_Direction(void) {
+    uint16_t direction = 0;
+    uint32_t channel_sums[Channel_Num] = {0};
+    
+    // 计算每个通道的平均值
+    for(int ch = 0; ch < Channel_Num; ch++) {
+        for(int sample = 0; sample < Sample_Num; sample++) {
+            channel_sums[ch] += ADC_ConvertedValue[sample][ch];
+        }
+        channel_sums[ch] /= Sample_Num;
+    }
+    
+    // 这里只是一个占位符实现
+    uint32_t max_value = 0;
+    uint8_t max_channel = 0;
+    
+    for(int ch = 0; ch < Channel_Num; ch++) {
+        if(channel_sums[ch] > max_value) {
+            max_value = channel_sums[ch];
+            max_channel = ch;
+        }
+    }
+    
+    // 将通道号转换为角度（假设传感器均匀分布在圆周上）
+    direction = max_channel * (360 / Channel_Num);
+    
+    return direction;
+}
+
+// 处理传感器数据的函数
+void Process_Sensor_Data(void) {
+    // 获取朝向结果
+    processed_direction = Calculate_Direction();
+    
+    // 输出朝向结果
+    UART1_SendString("Direction: ");
+    
+    // 显示朝向角度
+    u16 direction = processed_direction;
+    u8 hundreds = direction / 100;
+    u8 tens = (direction / 10) % 10;
+    u8 units = direction % 10;
+    
+    if(hundreds > 0) {
+        UART1_SendByte(hundreds + '0');
+    }
+    if(hundreds > 0 || tens > 0) {
+        UART1_SendByte(tens + '0');
+    }
+    UART1_SendByte(units + '0');
+    
+    UART1_SendString(" degrees\n");
+}
+
+// 在main.c中添加TIM3中断处理函数
+void TIM3_IRQHandler(void) {
+    if (TIM_GetITStatus(TIM3, TIM_IT_Update) != RESET) {
+        TIM_ClearITPendingBit(TIM3, TIM_IT_Update);
+        
+        // 处理传感器数据并计算朝向
+        Process_Sensor_Data();
+    }
+}
+
+// 在main.c中添加TIM3配置函数
+void TIM3_Config(uint16_t period_ms) {
+    TIM_TimeBaseInitTypeDef TIM_TimeBaseStructure;
+    NVIC_InitTypeDef NVIC_InitStructure;
+    
+    // 使能TIM3时钟
+    RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM3, ENABLE);
+    
+    // 配置定时器
+    TIM_TimeBaseStructure.TIM_Period = period_ms; // 设置周期
+    TIM_TimeBaseStructure.TIM_Prescaler = 7200 - 1; // 72MHz/7200 = 10kHz
+    TIM_TimeBaseStructure.TIM_ClockDivision = TIM_CKD_DIV1;
+    TIM_TimeBaseStructure.TIM_CounterMode = TIM_CounterMode_Up;
+    TIM_TimeBaseInit(TIM3, &TIM_TimeBaseStructure);
+    
+    // 使能更新中断
+    TIM_ITConfig(TIM3, TIM_IT_Update, ENABLE);
+    
+    // 配置NVIC
+    NVIC_InitStructure.NVIC_IRQChannel = TIM3_IRQn;
+    NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 1;
+    NVIC_InitStructure.NVIC_IRQChannelSubPriority = 1;
+    NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+    NVIC_Init(&NVIC_InitStructure);
+    
+    // 启动定时器
+    TIM_Cmd(TIM3, ENABLE);
+}
 
 
-	SystemInit();	      //ϵͳԵʼۯ
-	delay_init();	    	//ғʱگ˽Եʼۯ	  
-	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_2);//ʨ׃א׏ԅЈܶؖةΪة2ú2λȀռԅЈܶì2λЬӦԅЈܶ
-	uart_init(115200);    //ԮࠚԵʼۯìҨ͘Ê115200
-	Adc_Init();           //ADCۍDMAԵʼۯ
-	 
-   
-  while(1)
-	{
-		
-		 while(USART_GetFlagStatus(USART1,USART_FLAG_TXE)==RESET);//ֈսԫˤΪԉرղ֚һλ˽ߝɝӗ֪
-		 
-		Display_ADC_DMA();                                            
-		 UART1_SendString("\r\n");                               
-		 delay_ms(1);                                           
-		
-	}
+int main(void)
+{	
+    SystemInit();	          // 系统初始化
+    delay_init();	    	  // 延时函数初始化	  
+    NVIC_PriorityGroupConfig(NVIC_PriorityGroup_2); // 设置NVIC优先级分组为2:2位抢占优先级，2位响应优先级
+    uart_init(115200);        // 串口初始化波特率为115200
+    Adc_Init();               // ADC和DMA初始化
+    TIM_Config(1);            // 定时器周期1ms（根据需求调整）
+    TIM3_Config(100);         // 配置TIM3，100ms处理一次数据（可根据需要调整）
+    
+    while(1)
+    {
+        __WFI(); // CPU休眠，等待中断唤醒
+    }
+}
 	
- }
