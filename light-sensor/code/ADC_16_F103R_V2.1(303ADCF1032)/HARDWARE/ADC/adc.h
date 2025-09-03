@@ -11,3 +11,4 @@ u16 ReadADCAverageValue(u8 Channel);     //每个通道的数据取样10次，求得平均值
 
 
  #endif 
+ 

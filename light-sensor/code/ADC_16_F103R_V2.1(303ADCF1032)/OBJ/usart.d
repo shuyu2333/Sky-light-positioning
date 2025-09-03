@@ -31,3 +31,7 @@
 ..\obj\usart.o: ..\FWLIB\inc\misc.h
 ..\obj\usart.o: ..\SYSTEM\usart\usart.h
 ..\obj\usart.o: D:\MDK\ARM\ARMCC\Bin\..\include\stdio.h
+..\obj\usart.o: ..\HARDWARE\DMA\DMA.c
+..\obj\usart.o: ..\HARDWARE\DMA\DMA.h
+..\obj\usart.o: ..\HARDWARE\ADC\adc.h
+..\obj\usart.o: ..\SYSTEM\delay\delay.h

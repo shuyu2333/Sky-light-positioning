@@ -90,7 +90,7 @@ u16 USART_RX_STA=0;       //接收状态标记
 #define BUF_SIZE 128
 uint8_t adc_buf_ready[BUF_SIZE]; // 灏辩华鏁版嵁
 uint8_t adc_buf_active[BUF_SIZE]; // 鍙戦�佷腑鏁版嵁
-volatile bool buf_lock = false;   // 缂撳啿鍖哄垏鎹㈤攣
+int  buf_lock = 0;   // 缂撳啿鍖哄垏鎹㈤攣
 void uart_init(u32 bound){
   //GPIO端口设置
   GPIO_InitTypeDef GPIO_InitStructure;

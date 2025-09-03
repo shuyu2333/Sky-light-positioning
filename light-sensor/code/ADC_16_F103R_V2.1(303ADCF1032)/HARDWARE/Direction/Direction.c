@@ -5,7 +5,15 @@
 
 // 声明外部变量
 extern __IO u16 ADC_ConvertedValue[Sample_Num][Channel_Num];
+int ch,sample;
+    
+uint32_t max_value = 0;
+uint8_t max_channel = 0;
 
+u16 direction;
+u8 hundreds  ;
+u8 tens  ;
+u8 units ;
 // 存储处理后的朝向结果
 static uint16_t processed_direction = 0;
 
@@ -52,17 +60,13 @@ uint16_t Calculate_Direction(void) {
     uint32_t channel_sums[Channel_Num] = {0};
     
     // 计算每个通道的平均值
-    for(int ch = 0; ch < Channel_Num; ch++) {
-        for(int sample = 0; sample < Sample_Num; sample++) {
+    for(ch = 0; ch < Channel_Num; ch++) {
+        for(sample = 0; sample < Sample_Num; sample++) {
             channel_sums[ch] += ADC_ConvertedValue[sample][ch];
         }
         channel_sums[ch] /= Sample_Num;
     }
-    
-    // 简单实现：找到信号最强的通道
-    uint32_t max_value = 0;
-    uint8_t max_channel = 0;
-    
+
     for(int ch = 0; ch < Channel_Num; ch++) {
         if(channel_sums[ch] > max_value) {
             max_value = channel_sums[ch];
@@ -89,10 +93,10 @@ void Process_Sensor_Data(void) {
     UART1_SendString("Direction: ");
     
     // 显示朝向角度
-    u16 direction = processed_direction;
-    u8 hundreds = direction / 100;
-    u8 tens = (direction / 10) % 10;
-    u8 units = direction % 10;
+    direction = processed_direction;
+    hundreds = direction / 100;
+    tens = (direction / 10) % 10;
+    units = direction % 10;
     
     if(hundreds > 0) {
         UART1_SendByte(hundreds + '0');
