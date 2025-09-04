@@ -336,7 +336,7 @@
               <MiscControls></MiscControls>
               <Define>STM32F10X_MD,USE_STDPERIPH_DRIVER</Define>
               <Undefine></Undefine>
-              <IncludePath>..\CORE;..\FWLIB\inc;..\SYSTEM\delay;..\SYSTEM\sys;..\SYSTEM\usart;..\USER;..\HARDWARE\ADC;..\HARDWARE\DMA</IncludePath>
+              <IncludePath>..\CORE;..\FWLIB\inc;..\SYSTEM\delay;..\SYSTEM\sys;..\SYSTEM\usart;..\USER;..\HARDWARE\ADC;..\HARDWARE\DMA;..\HARDWARE\Direction</IncludePath>
             </VariousControls>
           </Cads>
           <Aads>
@@ -494,11 +494,6 @@
               <FileName>Direction.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\HARDWARE\Direction\Direction.c</FilePath>
-            </File>
-            <File>
-              <FileName>Direction.h</FileName>
-              <FileType>5</FileType>
-              <FilePath>..\HARDWARE\Direction\Direction.h</FilePath>
             </File>
           </Files>
         </Group>

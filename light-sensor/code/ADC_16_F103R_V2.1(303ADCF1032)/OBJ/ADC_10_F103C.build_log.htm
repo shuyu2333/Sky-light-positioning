@@ -27,68 +27,15 @@ Project File Date:  09/03/2025
 <h2>Output:</h2>
 *** Using Compiler 'V5.06 update 5 (build 528)', folder: 'D:\MDK\ARM\ARMCC\Bin'
 Build target 'ADC_10_F103C'
-compiling Direction.c...
-..\HARDWARE\ADC\adc.h(13): warning:  #1-D: last line of file ends without a newline
-   #endif 
-..\HARDWARE\Direction\Direction.c(55): error:  #29: expected an expression
-      for(int ch = 0; ch < Channel_Num; ch++) {
-..\HARDWARE\Direction\Direction.c(55): error:  #20: identifier "ch" is undefined
-      for(int ch = 0; ch < Channel_Num; ch++) {
-..\HARDWARE\Direction\Direction.c(56): error:  #29: expected an expression
-          for(int sample = 0; sample < Sample_Num; sample++) {
-..\HARDWARE\Direction\Direction.c(56): error:  #20: identifier "sample" is undefined
-          for(int sample = 0; sample < Sample_Num; sample++) {
-..\HARDWARE\Direction\Direction.c(63): error:  #268: declaration may not appear after executable statement in block
-      uint32_t max_value = 0;
-..\HARDWARE\Direction\Direction.c(64): error:  #268: declaration may not appear after executable statement in block
-      uint8_t max_channel = 0;
-..\HARDWARE\Direction\Direction.c(66): error:  #29: expected an expression
-      for(int ch = 0; ch < Channel_Num; ch++) {
-..\HARDWARE\Direction\Direction.c(92): error:  #268: declaration may not appear after executable statement in block
-      u16 direction = processed_direction;
-..\HARDWARE\Direction\Direction.c(93): error:  #268: declaration may not appear after executable statement in block
-      u8 hundreds = direction / 100;
-..\HARDWARE\Direction\Direction.c(94): error:  #268: declaration may not appear after executable statement in block
-      u8 tens = (direction / 10) % 10;
-..\HARDWARE\Direction\Direction.c(95): error:  #268: declaration may not appear after executable statement in block
-      u8 units = direction % 10;
-..\HARDWARE\Direction\Direction.c(120): warning:  #1-D: last line of file ends without a newline
-  }
-..\HARDWARE\Direction\Direction.c: 2 warnings, 11 errors
-compiling main.c...
-..\HARDWARE\ADC\adc.h(13): warning:  #1-D: last line of file ends without a newline
-   #endif 
-main.c(8): error:  #5: cannot open source input file "direction.h": No such file or directory
-  #include "direction.h"  // 添加方向处理模块头文�?
-main.c: 1 warning, 1 error
-compiling usart.c...
-..\HARDWARE\ADC\adc.h(13): warning:  #1-D: last line of file ends without a newline
-   #endif 
-..\HARDWARE\DMA\DMA.c(93): warning:  #1-D: last line of file ends without a newline
-  }
-..\SYSTEM\usart\usart.c(93): error:  #20: identifier "bool" is undefined
-  volatile bool buf_lock = false;   // 缓冲区切换锁
-KB: Unexpected type: 0
-error type>(93): error:  #20: identifier "false" is undefined
-  volatile bool buf_lock = false;   // 缓冲区切换锁
-..\SYSTEM\usart\usart.c(166): warning:  #223-D: function "DMA_SetMemoryBaseAddr" declared implicitly
-      DMA_SetMemoryBaseAddr(DMA1_Channel4, (uint32_t)data);
-..\SYSTEM\usart\usart.c(174): warning:  #223-D: function "DMA_GetCmdStatus" declared implicitly
-      if (!DMA_GetCmdStatus(DMA1_Channel4)) { // 检查DMA是否空闲
-..\SYSTEM\usart\usart.c(175): warning:  #223-D: function "memcpy" declared implicitly
-          memcpy(adc_buf_active, adc_buf_ready, BUF_SIZE); // 切换缓冲�?
-..\SYSTEM\usart\usart.c(177): warning:  #223-D: function "DMA_SetMemoryBaseAddr" declared implicitly
-          DMA_SetMemoryBaseAddr(DMA1_Channel4, (uint32_t)adc_buf_active);
-..\SYSTEM\usart\usart.c(183): error:  #247: function "DMA1_Channel4_IRQHandler"  has already been defined
-  void DMA1_Channel4_IRQHandler(void) { // DMA发送完成中�?
-..\SYSTEM\usart\usart.c: 6 warnings, 3 errors
-compiling DMA.c...
-..\HARDWARE\ADC\adc.h(13): warning:  #1-D: last line of file ends without a newline
-   #endif 
-..\HARDWARE\DMA\DMA.c(93): warning:  #1-D: last line of file ends without a newline
-  }
-..\HARDWARE\DMA\DMA.c: 2 warnings, 0 errors
-"..\OBJ\ADC_10_F103C.axf" - 15 Error(s), 11 Warning(s).
+linking...
+..\OBJ\ADC_10_F103C.axf: Error: L6218E: Undefined symbol DMA_GetCmdStatus (referred from usart.o).
+..\OBJ\ADC_10_F103C.axf: Error: L6218E: Undefined symbol DMA_SetMemoryBaseAddr (referred from usart.o).
+..\OBJ\ADC_10_F103C.axf: Error: L6218E: Undefined symbol TIM3_Config (referred from main.o).
+..\OBJ\ADC_10_F103C.axf: Error: L6218E: Undefined symbol TIM_Config (referred from main.o).
+Not enough information to list image symbols.
+Not enough information to list load addresses in the image map.
+Finished: 2 information, 0 warning and 4 error messages.
+"..\OBJ\ADC_10_F103C.axf" - 4 Error(s), 0 Warning(s).
 
 <h2>Software Packages used:</h2>
 
@@ -112,7 +59,7 @@ Package Vendor: Keil
 
    * Component: ARM::CMSIS:CORE:5.0.1
 Target not created.
-Build Time Elapsed:  00:00:07
+Build Time Elapsed:  00:00:01
 </pre>
 </body>
 </html>

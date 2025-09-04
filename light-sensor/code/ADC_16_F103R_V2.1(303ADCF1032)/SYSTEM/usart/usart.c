@@ -1,41 +1,11 @@
 #include "sys.h"
 #include "usart.h"	  
-#include "DMA.c"
+#include "DMA.h"
 
-////////////////////////////////////////////////////////////////////////////////// 	 
-//Èç¹ûÊ¹ÓÃucos,Ôò°üÀ¨ÏÂÃæµÄÍ·ÎÄ¼ş¼´¿É.
 #if SYSTEM_SUPPORT_OS
-#include "includes.h"					//ucos Ê¹ÓÃ	  
+#include "includes.h"					
 #endif
-//////////////////////////////////////////////////////////////////////////////////	 
-//±¾³ÌĞòÖ»¹©Ñ§Ï°Ê¹ÓÃ£¬Î´¾­×÷ÕßĞí¿É£¬²»µÃÓÃÓÚÆäËüÈÎºÎÓÃÍ¾
-//ALIENTEK STM32¿ª·¢°å
-//´®¿Ú1³õÊ¼»¯		   
-//ÕıµãÔ­×Ó@ALIENTEK
-//¼¼ÊõÂÛÌ³:www.openedv.com
-//ĞŞ¸ÄÈÕÆÚ:2012/8/18
-//°æ±¾£ºV1.5
-//°æÈ¨ËùÓĞ£¬µÁ°æ±Ø¾¿¡£
-//Copyright(C) ¹ãÖİÊĞĞÇÒíµç×Ó¿Æ¼¼ÓĞÏŞ¹«Ë¾ 2009-2019
-//All rights reserved
-//********************************************************************************
-//V1.3ĞŞ¸ÄËµÃ÷ 
-//Ö§³ÖÊÊÓ¦²»Í¬ÆµÂÊÏÂµÄ´®¿Ú²¨ÌØÂÊÉèÖÃ.
-//¼ÓÈëÁË¶ÔprintfµÄÖ§³Ö
-//Ôö¼ÓÁË´®¿Ú½ÓÊÕÃüÁî¹¦ÄÜ.
-//ĞŞÕıÁËprintfµÚÒ»¸ö×Ö·û¶ªÊ§µÄbug
-//V1.4ĞŞ¸ÄËµÃ÷
-//1,ĞŞ¸Ä´®¿Ú³õÊ¼»¯IOµÄbug
-//2,ĞŞ¸ÄÁËUSART_RX_STA,Ê¹µÃ´®¿Ú×î´ó½ÓÊÕ×Ö½ÚÊıÎª2µÄ14´Î·½
-//3,Ôö¼ÓÁËUSART_REC_LEN,ÓÃÓÚ¶¨Òå´®¿Ú×î´óÔÊĞí½ÓÊÕµÄ×Ö½ÚÊı(²»´óÓÚ2µÄ14´Î·½)
-//4,ĞŞ¸ÄÁËEN_USART1_RXµÄÊ¹ÄÜ·½Ê½
-//V1.5ĞŞ¸ÄËµÃ÷
-//1,Ôö¼ÓÁË¶ÔUCOSIIµÄÖ§³Ö
-////////////////////////////////////////////////////////////////////////////////// 	  
- 
 
-//////////////////////////////////////////////////////////////////
-//¼ÓÈëÒÔÏÂ´úÂë,Ö§³Öprintfº¯Êı,¶ø²»ĞèÒªÑ¡Ôñuse MicroLIB	  
 #if 1
 #pragma import(__use_no_semihosting)             
 //±ê×¼¿âĞèÒªµÄÖ§³Öº¯Êı                 
@@ -51,7 +21,6 @@ _sys_exit(int x)
 { 
 	x = x; 
 } 
-//ÖØ¶¨Òåfputcº¯Êı 
 int fputc(int ch, FILE *f)
 {      
 	while((USART1->SR&0X40)==0);//Ñ­»··¢ËÍ,Ö±µ½·¢ËÍÍê±Ï   
@@ -91,6 +60,7 @@ u16 USART_RX_STA=0;       //½ÓÊÕ×´Ì¬±ê¼Ç
 uint8_t adc_buf_ready[BUF_SIZE]; // å°±ç»ªæ•°æ®
 uint8_t adc_buf_active[BUF_SIZE]; // å‘é€ä¸­æ•°æ®
 int  buf_lock = 0;   // ç¼“å†²åŒºåˆ‡æ¢é”
+extern volatile uint8_t dma_tx_complete;
 void uart_init(u32 bound){
   //GPIO¶Ë¿ÚÉèÖÃ
   GPIO_InitTypeDef GPIO_InitStructure;
@@ -180,13 +150,6 @@ void UART1_DMA_Send_Trigger(void) {
     }
 }
 
-void DMA1_Channel4_IRQHandler(void) { // DMAå‘é€å®Œæˆä¸­æ–­
-    if (DMA_GetITStatus(DMA1_IT_TC4)) {
-        DMA_ClearITPendingBit(DMA1_IT_TC4);
-        USART_DMACmd(USART1, USART_DMAReq_Tx, DISABLE); // é‡Šæ”¾æ€»çº¿
-        buf_lock = false; // è§£é”ç¼“å†²åŒº
-    }
-}
 
 void USART1_IRQHandler(void)                	//´®¿Ú1ÖĞ¶Ï·şÎñ³ÌĞò
 	{

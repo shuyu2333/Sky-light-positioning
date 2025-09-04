@@ -1,4 +1,4 @@
-#include "direction.h"
+#include "Direction.h"
 #include "adc.h"
 #include "usart.h"
 #include "delay.h"
@@ -67,7 +67,7 @@ uint16_t Calculate_Direction(void) {
         channel_sums[ch] /= Sample_Num;
     }
 
-    for(int ch = 0; ch < Channel_Num; ch++) {
+    for(ch = 0; ch < Channel_Num; ch++) {
         if(channel_sums[ch] > max_value) {
             max_value = channel_sums[ch];
             max_channel = ch;

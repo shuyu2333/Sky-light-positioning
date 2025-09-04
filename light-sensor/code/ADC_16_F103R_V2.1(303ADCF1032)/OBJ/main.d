@@ -34,3 +34,4 @@
 ..\obj\main.o: D:\MDK\ARM\ARMCC\Bin\..\include\stdio.h
 ..\obj\main.o: ..\HARDWARE\ADC\adc.h
 ..\obj\main.o: ..\HARDWARE\DMA\DMA.h
+..\obj\main.o: ..\HARDWARE\Direction\Direction.h

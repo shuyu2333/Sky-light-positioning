@@ -1,5 +1,5 @@
 ..\obj\direction.o: ..\HARDWARE\Direction\Direction.c
-..\obj\direction.o: ..\HARDWARE\Direction\direction.h
+..\obj\direction.o: ..\HARDWARE\Direction\Direction.h
 ..\obj\direction.o: ..\USER\stm32f10x.h
 ..\obj\direction.o: ..\CORE\core_cm3.h
 ..\obj\direction.o: D:\MDK\ARM\ARMCC\Bin\..\include\stdint.h

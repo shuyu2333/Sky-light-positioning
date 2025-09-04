@@ -5,7 +5,7 @@
 #include "usart.h"
 #include "adc.h"
 #include "DMA.h"
-#include "DIRECTION.h"  // 添加方向处理模块头文件
+#include "Direction.h"
 
 extern __IO uint32_t adc_timestamp;
 uint8_t adc_data_buffer[128]; 

@@ -17,6 +17,7 @@
 "..\obj\system_stm32f10x.o"
 "..\obj\adc.o"
 "..\obj\dma.o"
+"..\obj\direction.o"
 --strict --scatter "..\OBJ\ADC_10_F103C.sct"
 --summary_stderr --info summarysizes --map --load_addr_map_info --xref --callgraph --symbols
 --info sizes --info totals --info unused --info veneers
