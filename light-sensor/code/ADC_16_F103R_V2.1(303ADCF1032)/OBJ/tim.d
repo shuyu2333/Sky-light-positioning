@@ -29,3 +29,4 @@
 ..\obj\tim.o: ..\FWLIB\inc\stm32f10x_usart.h
 ..\obj\tim.o: ..\FWLIB\inc\stm32f10x_wwdg.h
 ..\obj\tim.o: ..\FWLIB\inc\misc.h
+..\obj\tim.o: tim.h

@@ -1,9 +1,11 @@
-// timestamp.h
 #ifndef __TIM_H
 #define __TIM_H
 
-#include <stdint.h>
+#include "stm32f10x.h"
 
-void TIM_Timebase_Init(void)
+// 函数声明
+void TIM_Timebase_Init(void);
+void TIM_Config(uint16_t period_ms);
+void TIM3_Config(uint16_t period_ms);
 
 #endif

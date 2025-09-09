@@ -15,6 +15,7 @@
 "..\obj\main.o"
 "..\obj\stm32f10x_it.o"
 "..\obj\system_stm32f10x.o"
+"..\obj\tim.o"
 "..\obj\adc.o"
 "..\obj\dma.o"
 "..\obj\direction.o"
