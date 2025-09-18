@@ -84,25 +84,6 @@ void uart_init(u32 bound)
     USART_ITConfig(USART1, USART_IT_RXNE, ENABLE); /* 开启串口接收中断 */
     USART_Cmd(USART1, ENABLE); /* 使能串口1 */
 }
-
-/* 发送一个字节 */
-void UART1_SendByte(u8 data)
-{
-    USART_SendData(USART1, data);
-    while(USART_GetFlagStatus(USART1, USART_FLAG_TC) == RESET);
-}
-
-/* 发送字符串 */
-void UART1_SendString(u8 *s)
-{
-    /* 逐个发送字符 */
-    while(*s)
-    {
-        UART1_SendByte(*s++);
-    }
-}
-
-/* 使用DMA发送数据 */
 void UART1_DMA_Send(uint8_t *data, uint16_t len) 
 {
     DMA_InitTypeDef DMA_InitStructure;
@@ -134,6 +115,34 @@ void UART1_DMA_Send(uint8_t *data, uint16_t len)
     DMA_Cmd(DMA1_Channel4, ENABLE); /* 使能DMA通道 */
     USART_DMACmd(USART1, USART_DMAReq_Tx, ENABLE); /* 使能USART的DMA发送请求 */
 }
+
+/* 发送一个字节 */
+void UART1_SendByte(u8 data)
+{
+    static uint8_t byte_buf;
+    byte_buf = data;
+    
+    // 等待上次DMA传输完成
+    while(!dma_tx_complete) {
+        __WFI();
+    }
+    
+    // 使用DMA发送
+    UART1_DMA_Send(&byte_buf, 1);
+}
+
+/* 发送字符串 */
+void UART1_SendString(u8 *s)
+{
+    /* 逐个发送字符 */
+    while(*s)
+    {
+        UART1_SendByte(*s++);
+    }
+}
+
+/* 使用DMA发送数据 */
+
 
 /* DMA发送触发器 */
 void UART1_DMA_Send_Trigger(void) 
