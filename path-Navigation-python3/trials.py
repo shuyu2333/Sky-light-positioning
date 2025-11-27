@@ -141,17 +141,15 @@ def update_cells(heading, velocity, tb1, memory, cx, filtered_steps=0.0,
         if dt is None:
             # fallback to current UTC time (timezone-aware)
             dt = datetime.now(timezone.utc)
-        if lat is None or lon is None:
-            raise ValueError("use_polarized=True requires lat and lon")
+        # lat/lon are no longer required for the simplified sun model
         # Simulate sensors based on true heading and sun position, then estimate
-        sun_world = polarization.sun_azimuth(lat, lon, dt)
+        sun_world = polarization.sun_azimuth(dt)
         sensor_data = polarization.simulate_polar_sensors(true_heading=heading,
                                                           sun_azimuth_world=sun_world,
                                                           sensor_angles_deg=sensor_angles_deg,
                                                           noise_sigma=sensor_noise)
-        measured_heading, sigma, sw, sb = polarization.estimate_heading_from_sensors(sensor_data,
-                                                                                     sensor_angles_deg,
-                                                                                     lat, lon, dt)
+        measured_heading, sigma, sw, sb = polarization.estimate_heading_from_sensors(
+            sensor_data, sensor_angles_deg, dt)
         heading_for_compass = measured_heading
     else:
         heading_for_compass = heading
@@ -468,7 +466,7 @@ def run_sensor_driven_trial(sensor_data_seq, flow_seq, cx=None, cx_class=cx_rate
         # Estimate heading from sensors
         try:
             measured_h, sigma, sw, sb = polarization.estimate_heading_from_sensors(
-                sensor_data, sensor_angles_deg, lat, lon, dt)
+                sensor_data, sensor_angles_deg, dt)
         except Exception:
             # fallback to zero if estimation fails
             measured_h = 0.0

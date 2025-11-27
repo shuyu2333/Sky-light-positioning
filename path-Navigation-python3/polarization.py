@@ -1,7 +1,7 @@
 """Utilities to simulate polarized-sky sensor readings and estimate heading.
 
 This module provides:
-- sun_azimuth(lat, lon, dt): approximate solar azimuth (radians, from North, clockwise)
+- sun_azimuth(dt): simplified solar azimuth (radians, from North, clockwise) computed from time only
 - simulate_polar_sensors(true_heading, sun_azimuth, sensor_angles_deg, noise)
   -> returns sensor_data array shaped (N, 2) with (I0, I90) per sensor
 - estimate_sun_azimuth_from_sensors(sensor_data, sensor_angles_deg)
@@ -21,15 +21,24 @@ def _normalize_angle_rad(a: float) -> float:
     return (a + np.pi) % (2 * np.pi) - np.pi
 
 
-def sun_azimuth(lat_deg: float, lon_deg: float, dt: datetime) -> float:
-    """Approximate solar azimuth (radians) for given location and UTC datetime.
+def sun_azimuth(dt: datetime) -> float:
+    """Simplified solar azimuth (radians) computed from time only.
 
-    Returns azimuth measured clockwise from North (0 = North), range [-pi, pi).
+    The azimuth maps the hour-of-day linearly to degrees such that
+    0h -> 0° (North), 6h -> 90° (East), 12h -> 180° (South), etc.
 
-    This uses a compact version of the NOAA solar position calculation
-    and is accurate to a few degrees for typical experimental use.
+    The function intentionally ignores latitude and longitude and is meant
+    for simplified experiments where only `dt` is supplied.
     """
-    # Convert to Julian day
+    # treat dt as UTC when naive
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    # hour with fractional part
+    h = dt.hour + dt.minute / 60.0 + dt.second / 3600.0 + dt.microsecond / 3.6e9
+    h = h % 24.0
+    az_deg = 15.0 * h
+    az_rad = math.radians(az_deg)
+    return _normalize_angle_rad(az_rad)
     # Source: NOAA / simplified astronomical formulas
     # dt assumed timezone-aware (UTC) or naive UTC.
     if dt.tzinfo is None:
@@ -184,7 +193,7 @@ def estimate_sun_azimuth_from_sensors(sensor_data, sensor_angles_deg=None):
     return sun_azimuth_rad, sigma_c, I_values, p_values, c_values
 
 
-def estimate_heading_from_sensors(sensor_data, sensor_angles_deg, lat, lon, dt: datetime):
+def estimate_heading_from_sensors(sensor_data, sensor_angles_deg, dt: datetime):
     """Estimate agent heading (radians) from sensor_data and geographic location/time.
 
     Heading is computed as: heading = sun_azimuth_world - sun_azimuth_body
@@ -192,6 +201,6 @@ def estimate_heading_from_sensors(sensor_data, sensor_angles_deg, lat, lon, dt: 
     sun_azimuth_body is estimated from sensors (both clockwise from North).
     """
     sun_body, sigma, I, p, c = estimate_sun_azimuth_from_sensors(sensor_data, sensor_angles_deg)
-    sun_world = sun_azimuth(lat, lon, dt)
+    sun_world = sun_azimuth(dt)
     heading = _normalize_angle_rad(sun_world - sun_body)
     return heading, sigma, sun_world, sun_body

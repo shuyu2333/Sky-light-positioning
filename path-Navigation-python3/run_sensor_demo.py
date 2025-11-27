@@ -30,7 +30,7 @@ def main():
     sensor_data_seq = np.zeros((T, len(sensor_angles), 2))
     for t in range(T):
         dt = start_dt + np.timedelta64(t, 's').astype(object)
-        sun_world = polarization.sun_azimuth(lat, lon, dt)
+        sun_world = polarization.sun_azimuth(dt)
         sensor_data_seq[t] = polarization.simulate_polar_sensors(true_heading=true_h[t],
                                                                  sun_azimuth_world=sun_world,
                                                                  sensor_angles_deg=sensor_angles,
@@ -42,7 +42,7 @@ def main():
 
     # run sensor driven trial
     measured_headings, motors, log = trials.run_sensor_driven_trial(
-        sensor_data_seq, flow_seq, cx=None, logging=True, lat=lat, lon=lon, start_dt=start_dt,
+        sensor_data_seq, flow_seq, cx=None, logging=True, start_dt=start_dt,
         sensor_angles_deg=sensor_angles, sensor_noise=0.02)
 
     print('Example motors (first 20):', motors[:20])
