@@ -141,15 +141,17 @@ def update_cells(heading, velocity, tb1, memory, cx, filtered_steps=0.0,
         if dt is None:
             # fallback to current UTC time (timezone-aware)
             dt = datetime.now(timezone.utc)
-        # lat/lon are no longer required for the simplified sun model
+        if lat is None or lon is None:
+            raise ValueError("use_polarized=True requires lat and lon")
         # Simulate sensors based on true heading and sun position, then estimate
-        sun_world = polarization.sun_azimuth(dt)
+        sun_world = polarization.sun_azimuth(lat, lon, dt)
         sensor_data = polarization.simulate_polar_sensors(true_heading=heading,
                                                           sun_azimuth_world=sun_world,
                                                           sensor_angles_deg=sensor_angles_deg,
                                                           noise_sigma=sensor_noise)
-        measured_heading, sigma, sw, sb = polarization.estimate_heading_from_sensors(
-            sensor_data, sensor_angles_deg, dt)
+        measured_heading, sigma, sw, sb = polarization.estimate_heading_from_sensors(sensor_data,
+                                                                                     sensor_angles_deg,
+                                                                                     lat, lon, dt)
         heading_for_compass = measured_heading
     else:
         heading_for_compass = heading
@@ -177,7 +179,7 @@ def update_cells(heading, velocity, tb1, memory, cx, filtered_steps=0.0,
 def generate_memory(headings, velocity, cx, bump_shift=0.0, filtered_steps=0.0,
                     logging=False, use_polarized=False, lat=None, lon=None,
                     start_dt: datetime=None, sensor_angles_deg=None,
-                    sensor_noise: float=0.02):
+                    sensor_noise: float=0.02, motor_hold: int = 1):
     """For an outbound route, generate all the cell activity."""
     T = len(headings)
 
@@ -192,6 +194,8 @@ def generate_memory(headings, velocity, cx, bump_shift=0.0, filtered_steps=0.0,
     if start_dt is None:
         start_dt = datetime.now(timezone.utc)
 
+    # motor_hold: integer number of seconds to hold the motor command
+    last_motor = 0.0
     for t in range(T):
         dt = start_dt + timedelta(seconds=t)
         tl2, cl1, tb1, tn1, tn2, memory, cpu4, cpu1, motor = update_cells(
@@ -199,9 +203,17 @@ def generate_memory(headings, velocity, cx, bump_shift=0.0, filtered_steps=0.0,
             cx=cx, filtered_steps=filtered_steps,
             use_polarized=use_polarized, lat=lat, lon=lon, dt=dt,
             sensor_angles_deg=sensor_angles_deg, sensor_noise=sensor_noise)
+        # apply motor_hold policy for log (outbound path does not use motor to update motion)
+        if motor_hold and motor_hold > 1:
+            if t % motor_hold == 0:
+                last_motor = motor
+            motor_for_log = last_motor
+        else:
+            motor_for_log = motor
+
         if logging:
             cx_log.update_log(t, tl2, cl1, tb1, tn1, tn2, memory, cpu4, cpu1,
-                              motor)
+                              motor_for_log)
 
     if logging:
         return cx_log
@@ -210,11 +222,11 @@ def generate_memory(headings, velocity, cx, bump_shift=0.0, filtered_steps=0.0,
 
 
 def homing(T, tb1, memory, cx, acceleration=default_acc, drag=default_drag,
-        current_heading=0.0, current_velocity=np.array([0.0, 0.0]),
-        turn_sharpness=1.0, logging=True, bump_shift=0.0,
-        filtered_steps=0.0, use_polarized=False, lat=None, lon=None,
-        start_dt: datetime=None, sensor_angles_deg=None,
-        sensor_noise: float=0.02):
+           current_heading=0.0, current_velocity=np.array([0.0, 0.0]),
+           turn_sharpness=1.0, logging=True, bump_shift=0.0,
+           filtered_steps=0.0, use_polarized=False, lat=None, lon=None,
+           start_dt: datetime=None, sensor_angles_deg=None,
+           sensor_noise: float=0.02, motor_hold: int = 1):
     """Based on current state, return home. First is duplicate"""
     headings = np.empty(T + 1)
     headings[0] = current_heading
@@ -229,6 +241,8 @@ def homing(T, tb1, memory, cx, acceleration=default_acc, drag=default_drag,
     else:
         cx_log = None
 
+    # motor_hold enforces that the motor value only changes every motor_hold steps
+    last_motor = 0.0
     for t in range(1, T + 1):
         r = headings[t - 1] - headings[t - 2]
         r = (r + np.pi) % (2 * np.pi) - np.pi
@@ -242,10 +256,20 @@ def homing(T, tb1, memory, cx, acceleration=default_acc, drag=default_drag,
             filtered_steps=filtered_steps,
             use_polarized=use_polarized, lat=lat, lon=lon, dt=dt,
             sensor_angles_deg=sensor_angles_deg, sensor_noise=sensor_noise)
+        # apply motor_hold policy before using motor for rotation
+        if motor_hold and motor_hold > 1:
+            # update motor only every motor_hold steps (t counts from 1)
+            if (t - 1) % motor_hold == 0:
+                last_motor = motor
+            motor_for_use = last_motor
+        else:
+            motor_for_use = motor
+
         if logging:
             cx_log.update_log(t, tl2, cl1, tb1, tn1, tn2, memory, cpu4, cpu1,
-                              motor)
-        rotation = turn_sharpness * motor
+                              motor_for_use)
+
+        rotation = turn_sharpness * motor_for_use
 
         headings[t], velocity[t, :] = bee_simulator.get_next_state(
             headings[t - 1], velocity[t - 1, :], rotation, acceleration, drag)
@@ -257,7 +281,7 @@ def run_trial(route=None, T_outbound=1500, T_inbound=1500, acc_out=default_acc,
               cx=None, cx_class=cx_rate.CXRate, logging=True, random_homing=False, bump_shift=0.0,
               filtered_steps=0.0, drag=default_drag, tn_prefs=np.pi/4.0,
               use_polarized=False, lat=None, lon=None, start_dt: datetime=None,
-              sensor_angles_deg=None, sensor_noise: float=0.02):
+              sensor_angles_deg=None, sensor_noise: float=0.02, motor_hold: int = 1):
     """Generate outbound and inbound route and store results.
 
     Arguments:
@@ -279,9 +303,9 @@ def run_trial(route=None, T_outbound=1500, T_inbound=1500, acc_out=default_acc,
         log_out = generate_memory(h_out, v_out, cx, logging=True,
                                   bump_shift=bump_shift,
                                   filtered_steps=filtered_steps,
-                                  use_polarized=use_polarized, lat=lat, lon=lon,
-                                  start_dt=start_dt, sensor_angles_deg=sensor_angles_deg,
-                                  sensor_noise=sensor_noise)
+                      use_polarized=use_polarized, lat=lat, lon=lon,
+                      start_dt=start_dt, sensor_angles_deg=sensor_angles_deg,
+                      sensor_noise=sensor_noise, motor_hold=motor_hold)
         tb1 = log_out.tb1[:, -1]
         memory = log_out.memory[:, -1]
     else:
@@ -289,7 +313,7 @@ def run_trial(route=None, T_outbound=1500, T_inbound=1500, acc_out=default_acc,
             headings=h_out, velocity=v_out, cx=cx, logging=logging,
             filtered_steps=filtered_steps, bump_shift=bump_shift,
             use_polarized=use_polarized, lat=lat, lon=lon, start_dt=start_dt,
-            sensor_angles_deg=sensor_angles_deg, sensor_noise=sensor_noise)
+            sensor_angles_deg=sensor_angles_deg, sensor_noise=sensor_noise, motor_hold=motor_hold)
 
     cpu4_snapshot = memory.copy()
     # Start homing and store headings, velocity and cell activity.
@@ -303,7 +327,7 @@ def run_trial(route=None, T_outbound=1500, T_inbound=1500, acc_out=default_acc,
                                      bump_shift=bump_shift, logging=True,
                                      use_polarized=use_polarized, lat=lat, lon=lon,
                                      start_dt=start_dt, sensor_angles_deg=sensor_angles_deg,
-                                     sensor_noise=sensor_noise)
+                                     sensor_noise=sensor_noise, motor_hold=motor_hold)
     else:
         h_in, v_in, log_in = homing(
             T=T_inbound, tb1=tb1, memory=memory, cx=cx,
@@ -311,7 +335,7 @@ def run_trial(route=None, T_outbound=1500, T_inbound=1500, acc_out=default_acc,
             current_velocity=v_out[-1], logging=logging, bump_shift=bump_shift,
             filtered_steps=filtered_steps, drag=drag,
             use_polarized=use_polarized, lat=lat, lon=lon, start_dt=start_dt,
-            sensor_angles_deg=sensor_angles_deg, sensor_noise=sensor_noise)
+            sensor_angles_deg=sensor_angles_deg, sensor_noise=sensor_noise, motor_hold=motor_hold)
     h = np.hstack([h_out, h_in])
     v = np.vstack([v_out, v_in])
 
@@ -418,7 +442,7 @@ def run_sensor_driven_trial(sensor_data_seq, flow_seq, cx=None, cx_class=cx_rate
                             logging=True, lat=None, lon=None, start_dt: datetime=None,
                             sensor_angles_deg=None, sensor_noise: float=0.02,
                             filtered_steps=0.0, turn_sharpness=1.0, acceleration=default_acc,
-                            drag=default_drag):
+                            drag=default_drag, motor_hold: int = 1):
     """Run a trial driven by external sensors.
 
     Parameters:
@@ -459,6 +483,8 @@ def run_sensor_driven_trial(sensor_data_seq, flow_seq, cx=None, cx_class=cx_rate
     else:
         cx_log = None
 
+    # motor_hold: update motor only every motor_hold timesteps (1=every step)
+    last_motor = 0.0
     for t in range(T):
         dt = start_dt + timedelta(seconds=t)
         sensor_data = sensor_data_seq[t]
@@ -466,7 +492,7 @@ def run_sensor_driven_trial(sensor_data_seq, flow_seq, cx=None, cx_class=cx_rate
         # Estimate heading from sensors
         try:
             measured_h, sigma, sw, sb = polarization.estimate_heading_from_sensors(
-                sensor_data, sensor_angles_deg, dt)
+                sensor_data, sensor_angles_deg, lat, lon, dt)
         except Exception:
             # fallback to zero if estimation fails
             measured_h = 0.0
@@ -480,9 +506,16 @@ def run_sensor_driven_trial(sensor_data_seq, flow_seq, cx=None, cx_class=cx_rate
             heading=measured_h, velocity=velocity, tb1=tb1, memory=memory, cx=cx,
             filtered_steps=filtered_steps)
 
-        motors[t] = motor
+        if motor_hold and motor_hold > 1:
+            if t % motor_hold == 0:
+                last_motor = motor
+            motor_for_log = last_motor
+        else:
+            motor_for_log = motor
+
+        motors[t] = motor_for_log
 
         if logging:
-            cx_log.update_log(t, tl2, cl1, tb1, tn1, tn2, memory, cpu4, cpu1, motor)
+            cx_log.update_log(t, tl2, cl1, tb1, tn1, tn2, memory, cpu4, cpu1, motor_for_log)
 
     return measured_headings, motors, cx_log

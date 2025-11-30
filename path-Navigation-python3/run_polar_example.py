@@ -39,7 +39,7 @@ def run_example():
     for t in range(T):
         dt = start_dt + timedelta(seconds=t)
         # compute true sun azimuth in world frame
-        sun_world = polarization.sun_azimuth(dt)
+        sun_world = polarization.sun_azimuth(lat, lon, dt)
 
         # simulate sensors given true heading
         sensor_data = polarization.simulate_polar_sensors(true_heading=true_headings[t],
@@ -48,8 +48,9 @@ def run_example():
                                                           noise_sigma=0.03)
 
         # estimate heading from sensors + location/time
-        measured_h, sigma, sun_w, sun_b = polarization.estimate_heading_from_sensors(
-            sensor_data, sensor_angles, dt)
+        measured_h, sigma, sun_w, sun_b = polarization.estimate_heading_from_sensors(sensor_data,
+                                                                                     sensor_angles,
+                                                                                     lat, lon, dt)
         measured_headings[t] = measured_h
 
         # Use measured heading for TL/CL/TB, but use true heading+velocity for flow (optic flow)

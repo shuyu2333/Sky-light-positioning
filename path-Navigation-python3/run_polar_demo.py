@@ -17,6 +17,7 @@ def main():
     start_dt = datetime.now(timezone.utc)
 
     print("Running polarized demo: this may take a few seconds...")
+    motor_hold = 3
     h, v, log, cpu4_snapshot = trials.run_trial(
         T_outbound=T_out,
         T_inbound=T_in,
@@ -25,6 +26,7 @@ def main():
         lat=lat,
         lon=lon,
         start_dt=start_dt,
+        motor_hold=motor_hold,
         sensor_noise=0.03,
         cx=None)
 
