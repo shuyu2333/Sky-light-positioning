@@ -519,3 +519,112 @@ def run_sensor_driven_trial(sensor_data_seq, flow_seq, cx=None, cx_class=cx_rate
             cx_log.update_log(t, tl2, cl1, tb1, tn1, tn2, memory, cpu4, cpu1, motor_for_log)
 
     return measured_headings, motors, cx_log
+
+
+class LiveCXRunner:
+    """Stateful runner for stepwise (streaming / real-experiment) data.
+
+    Usage: create runner and call step(sensor_data, flow, dt) every time you
+    receive a new sensor measurement and a flow vector. The runner keeps
+    internal tb1/memory/cx state and returns measured_heading, motor and a
+    dict of intermediate values.
+
+    Important: this class estimates heading from polarization sensors here
+    (using polarization.estimate_heading_from_sensors) and passes that
+    heading into `update_cells` with `use_polarized=False` so the CX uses the
+    externally measured heading.
+    """
+    def __init__(self, cx=None, cx_class=cx_rate.CXRatePontin, logging=False,
+                 lat=None, lon=None, start_dt: datetime = None,
+                 sensor_angles_deg=None, sensor_noise: float = 0.02,
+                 filtered_steps: float = 0.0, motor_hold: int = 1,
+                 turn_sharpness: float = 1.0, acceleration: float = default_acc,
+                 drag: float = default_drag):
+        if cx is None:
+            cx = cx_class()
+
+        self.cx = cx
+        self.tb1 = np.zeros(central_complex.N_TB1)
+        self.memory = 0.5 * np.ones(central_complex.N_CPU4)
+        self.logging = logging
+        self.lat = lat
+        self.lon = lon
+        self.start_dt = start_dt if start_dt is not None else datetime.now(timezone.utc)
+        self.sensor_angles_deg = sensor_angles_deg
+        self.sensor_noise = sensor_noise
+        self.filtered_steps = filtered_steps
+        self.motor_hold = motor_hold
+        self.turn_sharpness = turn_sharpness
+        self.acceleration = acceleration
+        self.drag = drag
+
+        self._last_motor = 0.0
+        self._step_idx = 0
+
+        # simple list based log (if logging=True)
+        if self.logging:
+            self.log = {
+                'tl2': [], 'cl1': [], 'tb1': [], 'tn1': [], 'tn2': [],
+                'memory': [], 'cpu4': [], 'cpu1': [], 'motor': []
+            }
+
+    def step(self, sensor_data, flow_vec, dt: datetime = None):
+        """Process one timestep: sensor_data (N,2) and flow_vec (2,) -> outputs.
+
+        Returns: measured_heading, motor_for_log, outputs_dict
+        outputs_dict contains tl2, cl1, tb1, tn1, tn2, memory, cpu4, cpu1
+        """
+        if dt is None:
+            dt = self.start_dt + timedelta(seconds=self._step_idx)
+
+        # Estimate heading from polarization sensors (external measurement)
+        try:
+            measured_h, sigma, sw, sb = polarization.estimate_heading_from_sensors(
+                sensor_data, self.sensor_angles_deg, self.lat, self.lon, dt)
+        except Exception:
+            measured_h = 0.0
+
+        # Call update_cells with externally measured heading. We deliberately
+        # keep use_polarized=False so update_cells does not re-estimate.
+        tl2, cl1, tb1, tn1, tn2, memory, cpu4, cpu1, motor = update_cells(
+            heading=measured_h, velocity=flow_vec, tb1=self.tb1, memory=self.memory,
+            cx=self.cx, filtered_steps=self.filtered_steps, use_polarized=False,
+            lat=self.lat, lon=self.lon, dt=dt, sensor_angles_deg=self.sensor_angles_deg,
+            sensor_noise=self.sensor_noise)
+
+        # motor_hold logic
+        if self.motor_hold and self.motor_hold > 1:
+            if (self._step_idx) % self.motor_hold == 0:
+                self._last_motor = motor
+            motor_for_log = self._last_motor
+        else:
+            motor_for_log = motor
+
+        # rotate used in external motion controller would be:
+        rotation = self.turn_sharpness * motor_for_log
+
+        # update internal state for next call
+        self.tb1 = tb1
+        self.memory = memory
+
+        if self.logging:
+            self.log['tl2'].append(tl2)
+            self.log['cl1'].append(cl1)
+            self.log['tb1'].append(tb1)
+            self.log['tn1'].append(tn1)
+            self.log['tn2'].append(tn2)
+            self.log['memory'].append(memory)
+            self.log['cpu4'].append(cpu4)
+            self.log['cpu1'].append(cpu1)
+            self.log['motor'].append(motor_for_log)
+
+        self._step_idx += 1
+
+        outputs = {
+            'tl2': tl2, 'cl1': cl1, 'tb1': tb1, 'tn1': tn1, 'tn2': tn2,
+            'memory': memory, 'cpu4': cpu4, 'cpu1': cpu1, 'motor': motor_for_log,
+            'rotation_to_apply': rotation
+        }
+
+        return measured_h, motor_for_log, outputs
+
