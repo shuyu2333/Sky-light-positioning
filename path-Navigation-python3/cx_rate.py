@@ -114,6 +114,7 @@ class CXRate(CX):
                 [0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1]])
         self.W_CPU1b_motor = np.array([[0, 1],
                                        [1, 0]])
+        self.W_CPU1_motor = np.array([[1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1]])
 
         if weight_noise > 0.0:
             self.W_CL1_TB1 = noisify_weights(self.W_CL1_TB1, weight_noise)
@@ -232,10 +233,11 @@ class CXRate(CX):
 
     def motor_output(self, cpu1):
         """outputs a scalar where sign determines left or right turn."""
-        cpu1a = cpu1[1:-1]
-        cpu1b = np.array([cpu1[-1], cpu1[0]])
-        motor = np.dot(self.W_CPU1a_motor, cpu1a)
-        motor += np.dot(self.W_CPU1b_motor, cpu1b)
+        # cpu1a = cpu1[1:-1]
+        # cpu1b = np.array([cpu1[-1], cpu1[0]])
+        # motor = np.dot(self.W_CPU1a_motor, cpu1a)
+        # motor += np.dot(self.W_CPU1b_motor, cpu1b)
+        motor = np.dot(self.W_CPU1_motor, cpu1)
         output = (motor[0] - motor[1]) * 0.25  # To kill the noise a bit!
         return output
 

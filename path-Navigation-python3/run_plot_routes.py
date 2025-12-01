@@ -21,8 +21,8 @@ def main():
     fig, ax = plotter.plot_route(h, v, T_outbound=T_out, T_inbound=T_in,
                                 plot_speed=False, plot_heading=True,
                                 outbound_color='purple', inbound_color='green')
-    plotter.save_plot(fig, 'example_route_plot')
-    print('Saved plots/example_route_plot.pdf')
+    plotter.save_plot(fig, 'example_route_plot1')
+    print('Saved plots/example_route_plot1.pdf')
 
 
 if __name__ == '__main__':

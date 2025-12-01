@@ -48,9 +48,9 @@ def main():
         sensor_angles_deg=sensor_angles, sensor_noise=0.02, motor_hold=motor_hold)
         
 
-    print('Example motors (first 20):', motors[:20])
-    np.savez('data/sensor_demo.npz', measured_headings=measured_headings, motors=motors)
-    print('Saved data/sensor_demo.npz')
+    print('Example motors :', motors)
+    np.savez('data/sensor_demo1.npz', measured_headings=measured_headings, motors=motors)
+    print('Saved data/sensor_demo1.npz')
 
 
 if __name__ == '__main__':
